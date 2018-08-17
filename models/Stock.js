@@ -10,9 +10,6 @@ const StockSchema = new Schema({
     date: {
         type: Date,
         default: Date.now
-    },
-    description: {
-        type: Array
     }
 });
 
