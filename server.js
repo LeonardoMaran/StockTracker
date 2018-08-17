@@ -17,7 +17,6 @@ mongoose
     .catch(err => console.log(err));
 
 // Middleware
-app.use(express.static(path.join(__dirname, 'public')));
 
 app.use(bodyParser.json());
 

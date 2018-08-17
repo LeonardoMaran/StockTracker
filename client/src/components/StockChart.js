@@ -13,7 +13,7 @@ import ReactHighstock from 'react-highcharts/ReactHighstock';
 import { connect } from 'react-redux';
 import { getStocks, deleteStock, addStock } from '../actions/stockActions';
 import PropTypes from 'prop-types';
-import MyChart from './MyChart';
+import MyChart from '../highchart/MyChart';
 import Searchbar from './Searchbar';
 import { parseData } from '../data/dataParser';
 import {
@@ -65,6 +65,12 @@ class StockChart extends Component {
     }
 
 
+    /**
+     * Validate the requested ticker symbol return 0 if not meet adding condition.
+     * @param  {String} code
+     * @return 1 if success
+     *         0 if the ticker symbol is already added in the stock list or current stock list reaches maximum stock size.
+     */
     addStockValidation = (code) => {
         const { stocks } = this.props.stock;
         const containsCode = stocks.filter(stock => (stock.code === code)).length;
@@ -75,7 +81,7 @@ class StockChart extends Component {
             this.setState({ visible: true });
             return res;
         }
-        else if (stocks.length >= 5) {
+        else if (stocks.length >= 7) {
             this.setState({ alert : 'You can only track up to five stocks at this moment.'})
             this.setState({ visible: true });
             return res;
@@ -83,10 +89,15 @@ class StockChart extends Component {
         return 1;
     }
 
+    /**
+     * if passes ticker symbol validation - add the stock to the list.
+     * @param  {String} code
+     */
     addStockConfig = (code) => {
         this.onDismiss();
         if (!this.addStockValidation(code)) return;
 
+        // set the loading state to true
         this.onLoading();
 
         const stockUrl = `https://www.quandl.com/api/v3/datasets/WIKI/${code}.json?limit=30&collapse=weekly&api_key=${key}`;
@@ -94,9 +105,8 @@ class StockChart extends Component {
             .get(stockUrl)
             .then(stockData => {
 
-
+                //  get the response of requested ticker symbol and pass it to the addStock.
                 let newStock = parseData(stockData);
-
                 this.addNewStock(newStock);
 
             })
@@ -105,6 +115,11 @@ class StockChart extends Component {
             });
     }
 
+
+    /**
+     * pass add stock action to reducer
+     * @param  {Object} newStock
+     */
     addNewStock = (newStock) => {
         this.props.addStock({
             code: newStock.code
@@ -112,6 +127,10 @@ class StockChart extends Component {
         this.loadSingleStockConfig(newStock);
     }
 
+    /**
+     * construct a series' list based on ticker symbol in the current state for loading highstocks
+     * @param  {Object Array} stocks
+     */
     loadAllStocksConfigs = (stocks) => {
         this.config.series = [];
         if (stocks.length > 0) {
@@ -140,6 +159,10 @@ class StockChart extends Component {
         }
     }
 
+    /**
+     * construct one series based on given ticker symbol in the current state for loading highstocks
+     * @param  {Object} stocks
+     */
     loadSingleStockConfig = (stock) => {
         let chart = this.refs.chart.getChart();
         if (stock) {
@@ -151,12 +174,21 @@ class StockChart extends Component {
         }
     }
 
+    /**
+     * remove a stock from current list
+     * @param  {} _id
+     * @param  {String} code
+     */
     removeStock = (_id, code) => {
-        this.onLoading();
+        this.onLoading(); // set the loading state to true before the operation finishes
         this.props.deleteStock(_id);
         this.removeSingleStockConfig(code);
     }
 
+    /**
+     * remove the series of given ticker symbol from highstocks
+     * @param  {String} code
+     */
     removeSingleStockConfig = (code) => {
         let chart = this.refs.chart.getChart();
         const stockIndex = this.config.series.findIndex(stock => stock.name === code);
@@ -166,6 +198,12 @@ class StockChart extends Component {
         this.doneLoading();
     }
 
+    /**
+     * generate a series of the ticker symbol
+     * @param  {String} code
+     * @param  {Array} data
+     * @param  {int} i
+     */
     generateSeriesConfig = (code, data, i) => {
         const seriesColor = Highcharts.getOptions().colors[i];
         return {
@@ -209,7 +247,6 @@ class StockChart extends Component {
     onDismiss = () => {
         this.setState({ visible: false });
     }
-
 
 
     render() {
