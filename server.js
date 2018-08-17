@@ -12,9 +12,9 @@ const db = require('./config/keys').mongoURI;
 
 // connect to DB
 mongoose
-    .connect(db, { useNewUrlParser: true })
-    .then(() => console.log('Database connected.'))
-    .catch(err => console.log(err));
+	.connect(db, { useNewUrlParser: true })
+	.then(() => console.log('Database connected.'))
+	.catch(err => console.log(err));
 
 // Middleware
 
@@ -26,11 +26,11 @@ app.use('/api/stocks', stocks);
 
 // deployment
 if (process.env.NODE_ENV === 'production') {
-  // Set static folder
-  app.use(express.static('client/build'));
-   app.get('*', (req, res) => {
-    res.sendFile(path.resolve(__dirname, 'client', 'build', 'index.html'));
-  });
+	// Set static folder
+	app.use(express.static('client/build'));
+	app.get('*', (req, res) => {
+		res.sendFile(path.resolve(__dirname, 'client', 'build', 'index.html'));
+	});
 }
 
 const port = process.env.PORT || 5000;
