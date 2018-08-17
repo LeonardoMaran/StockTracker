@@ -6,6 +6,9 @@ import StockChart from './components/StockChart';
 
 import { Provider } from 'react-redux';
 import store from './store';
+import StockNews from './components/StockNews';
+import CurrencyExchanger from './components/CurrencyExchanger';
+
 class App extends Component {
 	render() {
 		return (
@@ -16,6 +19,10 @@ class App extends Component {
 					</header>
 					<section className="stock-panel">
 						<StockChart />
+						<section className="info-section">
+							<StockNews />
+							<CurrencyExchanger />
+						</section>
 					</section>
 				</div>
 			</Provider>
