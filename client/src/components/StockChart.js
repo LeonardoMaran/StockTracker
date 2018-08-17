@@ -3,14 +3,23 @@ import {
     ListGroup,
     ListGroupItem,
     Button,
-    Container
+    Alert
 } from 'reactstrap';
+import {
+    CSSTransition,
+    TransitionGroup
+} from 'react-transition-group';
 import ReactHighstock from 'react-highcharts/ReactHighstock';
+import { connect } from 'react-redux';
+import { getStocks, deleteStock, addStock } from '../actions/stockActions';
+import PropTypes from 'prop-types';
+import MyChart from './MyChart';
+import Searchbar from './Searchbar';
+import { parseData } from '../data/dataParser';
 import {
     API_KEY
 } from '../config/keys';
 import axios from 'axios';
-import MyChart from './MyChart';
 
 const key = API_KEY || process.env.API_KEY;
 
@@ -20,114 +29,145 @@ let seriesSize = 0;
 let loadAllConfigs = true;
 
 class StockChart extends Component {
+
     state = {
-        stocks: [],
-        hasUpdated: false
+        color: [],
+        loading: false,
+        visible: false,
+        alert: ''
     }
 
+    // highchart configuration
     config = {
         rangeSelector: {
             selected: 2
         },
-
-        yAxis: {
-            labels: {
-                formatter: function () {
-                    return (this.value > 0 ? ' + ' : '') + this.value + '%';
-                }
-            },
-            plotLines: [{
-                value: 0,
-                width: 2,
-                color: 'silver'
-            }]
-        },
-
         plotOptions: {
             series: {
                 compare: 'percent',
                 showInNavigator: true
             }
         },
-
         tooltip: {
             pointFormat: '<span style="color:{series.color}">{series.name}</span>: <b>{point.y}</b> ({point.change}%)<br/>',
             valueDecimals: 2,
             split: true
         },
-
         series: []
     };
 
     componentDidMount() {
-        const { stocks } = this.state;
-        //   if (this.state.hasUpdated){
-        if (stocks.size > 0) {
-            chart = this.refs.chart.getChart();
-        }
+        chart = this.refs.chart.getChart();
     }
 
-    addStock = (code) => {
-        const containsCode = this.state.stocks.filter(stock => (stock.code === code)).length;
+    componentWillMount() {
+        this.props.getStocks();
+    }
+
+
+    addStockValidation = (code) => {
+        const { stocks } = this.props.stock;
+        const containsCode = stocks.filter(stock => (stock.code === code)).length;
+        const res = 0;
 
         if (containsCode > 0) {
-            alert("already existed");
-            return;
+            this.setState({ alert : 'Stock already added.'})
+            this.setState({ visible: true });
+            return res;
         }
+        else if (stocks.length >= 5) {
+            this.setState({ alert : 'You can only track up to five stocks at this moment.'})
+            this.setState({ visible: true });
+            return res;
+        }
+        return 1; 
+    }
 
-        const pList = [];
-        const stockUrl = "https://www.quandl.com/api/v3/datasets/WIKI/";
-        const access = ".json?limit=30&collapse=weekly&api_key=";
+    addStockConfig = (code) => {
+        this.onDismiss();
+        if (!this.addStockValidation(code)) return;
+
+        this.onLoading();
+
+        const stockUrl = `https://www.quandl.com/api/v3/datasets/WIKI/${code}.json?limit=30&collapse=weekly&api_key=${key}`;
         axios
-            .get(stockUrl + code + access + key)
-            .then(stock => {
+            .get(stockUrl)
+            .then(stockData => {
 
-                const dataList = stock.data.dataset.data;
 
-                dataList.forEach(data => {
-                    pList.unshift([parseInt(new Date(data[0]).getTime(), 10), data[4]]);
-                })
+                let newStock = parseData(stockData);
 
-                let newStock = {
-                    code: stock.data.dataset.dataset_code,
-                    description: stock.data.dataset.name,
-                    pList: pList
-                }
-
-                this.setState(state => ({
-                    stocks: [...state.stocks, newStock]
-                }));
-
-                this.loadSingleStockConfig(newStock);
+                this.addNewStock(newStock);
 
             })
             .catch(err => {
                 console.log(err);
             });
-
     }
 
-    onDeleteClick = (code) => {
-        this.props.deleteStock(code);
-
+    addNewStock = (newStock) => {
+        this.props.addStock({
+            code: newStock.code
+        });
+        this.loadSingleStockConfig(newStock);
     }
 
-    removeStock = (code) => {
-        this.setState(state => ({
-            stocks: state.stocks.filter(stock => stock.code !== code)
-        }));
+    loadAllStocksConfigs = (stocks) => {
+        this.config.series = [];
+        if (stocks.length > 0) {
+            stocks.forEach((stock, i) => {
+
+                const stockUrl = `https://www.quandl.com/api/v3/datasets/WIKI/${stock.code}.json?limit=30&collapse=weekly&api_key=${key}`;
+                axios
+                    .get(stockUrl)
+                    .then(stockData => {
+
+                        let newStock = parseData(stockData);
+
+                        let series = this.generateSeriesConfig(newStock.code, newStock.data, i);
+                        seriesSize++;
+                        this.config.series.push(series);
+                        chart.addSeries(series);
+                        
+                        loadAllConfigs = false;
+
+                    })
+                    .catch(err => {
+                        console.log(err);
+                    });
+            });
+
+        }
+    }
+
+    loadSingleStockConfig = (stock) => {
+        let chart = this.refs.chart.getChart();
+        if (stock) {
+            let newSeries = this.generateSeriesConfig(stock.code, stock.data, seriesSize++);
+            this.config.series.push(newSeries);
+            chart.addSeries(newSeries);
+            seriesSize++;
+            this.doneLoading();
+        }
+    }
+
+    removeStock = (_id, code) => {
+        this.onLoading();
+        this.props.deleteStock(_id);
         this.removeSingleStockConfig(code);
     }
 
-    removeAllStocks = () => {
-        this.setState(state => ({
-            stocks: []
-        }));
-        this.removeSingleStockConfig();
+    removeSingleStockConfig = (code) => {
+        let chart = this.refs.chart.getChart();
+        const stockIndex = this.config.series.findIndex(stock => stock.name === code);
+        this.config.series.splice(stockIndex, 1);
+        chart.series[stockIndex].remove(true);
+        seriesSize--;
+        this.doneLoading();
     }
 
-
     generateSeriesConfig = (code, data, i) => {
+        const seriesColor = Highcharts.getOptions().colors[i];
         return {
             name: code,
             type: "areaspline",
@@ -144,95 +184,102 @@ class StockChart extends Component {
                 },
                 stops: [
                     [0,
-                        Highcharts.Color(Highcharts.getOptions().colors[i])
+                        Highcharts.Color(seriesColor)
                             .setOpacity(0.4).get('rgba')],
                     [1,
-                        Highcharts.Color(Highcharts.getOptions().colors[i])
+                        Highcharts.Color(seriesColor)
                             .setOpacity(0).get('rgba')]
                 ]
             }
         }
     }
 
-    loadAllStocksConfigs = () => {
-        this.config.series = [];
-        let chart = this.refs.chart.getChart();
-        if (this.state.stocks.length > 0) {
-            console.log("Event: loadALLStocks");
-            this.state.stocks.forEach((stock, i) => {
-                let series = this.generateSeriesConfig(stock.code, stock.pList, i);
-                seriesSize++;
-                console.log(series);
-                this.config.series.push(series);
-                chart.addSeries(series);
-            });
-        }
+    onLoading = () => {
+        this.setState({
+            loading: true
+        });
     }
 
-    loadSingleStockConfig = (stock) => {
-        let chart = this.refs.chart.getChart();
-        if (stock) {
-            let newSeries = this.generateSeriesConfig(stock.code, stock.pList, seriesSize++);
-            this.config.series.push(newSeries);
-            chart.addSeries(newSeries);
-            seriesSize++;
-        }
+    doneLoading = () => {
+        this.setState({
+            loading: false
+        });
     }
 
-    removeSingleStockConfig = (code) => {
-        let chart = this.refs.chart.getChart();
-        const stockIndex = this.config.series.findIndex(stock => stock.name === code);
-        this.config.series.splice(stockIndex, 1);
-        chart.series[stockIndex].remove(true);
-        seriesSize--;
+    onDismiss = () => {
+        this.setState({ visible: false });
     }
 
-    removeAllStockConfigs = (code) => {
-        this.config.series = []
-        for (var i = chart.series.length - 1; i >= 0; i--) {
-            chart.series[i].remove(false);
-        }
-        seriesSize = 0;
-    }
 
 
     render() {
+        const { stocks } = this.props.stock;
+        const { loading } = this.state;
+
+        if (loadAllConfigs && stocks) {
+            this.loadAllStocksConfigs(stocks);
+        }
+
+        const display = (loading === true || this.props.stock.loading === true) ? 'block' : 'none';
         return (
+            <div>
 
-            <div id="stock-chart" >
+                <div id="loading" style={{ display: display }}></div>
 
-                <Button color="dark"
-                    className="m-2"
-                    onClick={
-                        () => {
-                            const code = prompt('Enter code');
-                            // TODO verify code
-                            this.addStock(code);
-                        }
-                    } >
-                    Add Stock Code </Button>
+                <Alert color="info" isOpen={this.state.visible} toggle={this.onDismiss}>
+                   {this.state.alert}
+                </Alert>
 
-                <ListGroup >
-                    {
-                        this.state.stocks.map(({ code }) => (
-                            <ListGroupItem key={code}>
-                                <Button className="remove-btn"
-                                    color="danger"
-                                    size="sm"
-                                    onClick={
-                                        () => {
-                                            this.removeStock(code);
-                                        }
-                                    } >
-                                    &times;
-                                    </Button> {code} </ListGroupItem>
-                        ))
-                    }
-                </ListGroup>
-                <ReactHighstock ref="chart" config={this.config} />;
+                <Searchbar addStockConfig={this.addStockConfig.bind(this)} />
+
+                <div className="stock-chart">
+
+                    <ListGroup id="stock-list">
+                        <TransitionGroup className="shopping-list" >
+                            {stocks.map((stock) => (
+
+                                <CSSTransition key={stock._id}
+                                    timeout={500}
+                                    classNames="fade" >
+                                    <ListGroupItem
+                                        className="stock-item"
+                                    >
+                                        {stock.code}
+                                        <Button className="remove-btn"
+                                            outline
+                                            size="sm"
+                                            onClick={
+                                                this.removeStock.bind(this, stock._id, stock.code)
+                                            } >
+                                            &times;
+                                        </Button>
+
+                                    </ListGroupItem>
+                                </CSSTransition>
+
+                            ))
+                            }
+                        </TransitionGroup>
+                    </ListGroup>
+
+                    <ReactHighstock id="stock-graph" neverReflow={true} ref="chart" config={this.config} />
+                </div>
+
+
             </div>
         );
     }
 }
 
-export default StockChart;
+
+StockChart.propTypes = {
+    getStocks: PropTypes.func.isRequired,
+    stock: PropTypes.object.isRequired
+};
+
+
+const mapStateToProps = (state) => ({
+    stock: state.stock
+});
+
+export default connect(mapStateToProps, { getStocks, deleteStock, addStock })(StockChart);
