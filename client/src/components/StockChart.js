@@ -80,7 +80,7 @@ class StockChart extends Component {
             this.setState({ visible: true });
             return res;
         }
-        return 1; 
+        return 1;
     }
 
     addStockConfig = (code) => {
@@ -128,7 +128,7 @@ class StockChart extends Component {
                         seriesSize++;
                         this.config.series.push(series);
                         chart.addSeries(series);
-                        
+
                         loadAllConfigs = false;
 
                     })
