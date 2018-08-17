@@ -21,7 +21,6 @@ class App extends Component {
 						<StockChart />
 						<section className="info-section">
 							<StockNews />
-							<CurrencyExchanger />
 						</section>
 					</section>
 				</div>
