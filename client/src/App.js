@@ -7,7 +7,6 @@ import StockChart from './components/StockChart';
 import { Provider } from 'react-redux';
 import store from './store';
 import StockNews from './components/StockNews';
-import CurrencyExchanger from './components/CurrencyExchanger';
 
 class App extends Component {
 	render() {
