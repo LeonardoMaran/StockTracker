@@ -60,10 +60,7 @@ class StockNews extends Component {
                                 <a href={article.url} target="_blank">
                                     {article.title} -  {article.author} </a>
                                     <small>{article.description} </small>
-
-
                             </ListGroupItem>
-
                         ))
                         }
                     </ListGroup>

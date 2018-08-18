@@ -23,13 +23,13 @@ class AppNavbar extends Component {
     render() {
         return (
             <div>
-                <Navbar className="mb-2 dark" dark  >
+                <Navbar className="mb-2 dark" dark expand="md">
                         <NavbarBrand href="/"><i className="fas fa-chart-line mr-2"></i>STOCKTRACKER</NavbarBrand>
                         <NavbarToggler onClick={this.toggle} />
                         <Collapse isOpen={this.state.isOpen} navbar>
                             <Nav className="ml-auto" navbar>
                                 <NavItem>
-                                    <NavLink href="https://github.com/yz9">GitHub</NavLink>
+                                    <NavLink href="https://github.com/yz9" target="_blank">GitHub</NavLink>
                                 </NavItem>
                             </Nav>
                         </Collapse>
