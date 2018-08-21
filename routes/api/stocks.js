@@ -21,8 +21,6 @@ router.post('/', (req, res) => {
 
 // delete stock by id
 router.delete('/:id', (req, res) => {
-    console.log("here");
-    console.log(req);
     Stock.findById(req.params.id)
         .then(stock => stock.remove().then(() => res.json({
             deletedStock: req.params.id,

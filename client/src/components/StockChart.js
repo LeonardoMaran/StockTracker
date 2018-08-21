@@ -57,13 +57,9 @@ class StockChart extends Component {
     };
 
     componentDidMount() {
+        this.props.getStocks();
         chart = this.refs.chart.getChart();
     }
-
-    componentWillMount() {
-        this.props.getStocks();
-    }
-
 
     /**
      * Validate the requested ticker symbol return 0 if not meet adding condition.
