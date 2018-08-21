@@ -1,6 +1,6 @@
 # StockTracker
 
-> A full stack MERN app for tracking real-time stock using redux for state management and one addition feature allows to fetch latest financial news.
+> A full stack MERN app for tracking real-time stock using redux for state management and one addition feature allows to fetch latest financial news.:chart_with_upwards_trend:
 
 #### Features
 
